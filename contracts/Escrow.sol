@@ -17,6 +17,10 @@ contract Escrow {
     address public lender;
     address public inspector;
     bool public inspectionStatus = false;
+
+    mapping (address => bool) approval;
+
+   receive () external payable {}
     constructor(
         address _nftAddress,
         uint256 _nftId,
@@ -52,10 +56,22 @@ contract Escrow {
     function updateInspection (bool _inspectionStatus) public inspectorOnly {
         inspectionStatus = _inspectionStatus;
     }
+    function approveSale() public {
+        approval[msg.sender]= true;
+            }
     function getBalance() public view returns (uint) {
         return address(this).balance;
     }
     function finalizeSale() public {
+        require(inspectionStatus, "the inspector must approve");
+
+        require(approval[buyer], " the buyer must approve");
+        require(approval[seller], " the seller must approve");
+        require(approval[lender], " the lender must approve");
+        require(address(this).balance >= purchasePrice, "must have enough ether");
+
+        (bool success, ) =  payable(seller).call{value: address(this).balance}("");
+        require(success);
         IERC721(nftAddress).transferFrom(seller, buyer, nftID);
     }
 }
